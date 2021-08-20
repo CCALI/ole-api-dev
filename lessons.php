@@ -16,7 +16,7 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
 $result = curl_exec($ch);
 
 $lessons = (json_decode($result, true));
-//var_dump ($lessons);
+var_dump ($lessons);
 foreach ($lessons as $lesson) {
 	echo 'nid ='. $lesson["nid"][0]["value"].' Title= '.$lesson["title"][0]["value"].'</br>';
 	
