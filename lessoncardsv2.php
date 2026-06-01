@@ -58,5 +58,7 @@ foreach ($lessons as $lesson) {
 curl_close($ch);
 ?>
 
+<iframe width="1200px" height="800px" src="http://labs.calidev.org/ole/lessons/lss32/jq.html?name=Sam%20Goshorn&runid=54321&save=/dbsavedatahere/54321"></iframe>
+
 </body>
 </html>
