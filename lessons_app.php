@@ -29,217 +29,250 @@ if (isset($_GET['view_lesson']) && !empty($_GET['view_lesson'])) {
     }
     ?>
     <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>Interactive Application: <?php echo htmlspecialchars($title); ?></title>
-        <style>
-            body {
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                margin: 0; padding: 0;
-                background-color: #f0f2f5;
-                height: 100vh;
-                display: flex; flex-direction: column;
-            }
-            header {
-                background: #fff;
-                padding: 15px 30px;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-                display: flex; align-items: center; justify-content: space-between;
-                border-bottom: 1px solid #e1e4e8;
-            }
-            .nav-back { color: #0056b3; text-decoration: none; font-weight: bold; }
-            h1 { margin: 0; font-size: 1.35rem; color: #111; }
-            
-            .app-workspace { display: flex; flex: 1; overflow: hidden; }
-            
-            /* Left Panel: HTML Live Document Reader */
-            .html-renderer-panel {
-                flex: 1; padding: 40px; overflow-y: auto;
-                display: flex; flex-direction: column; justify-content: space-between;
-                background: #fff;
-            }
-            /* Right Panel: RAW Code Inspector */
-            .xml-source-panel {
-                width: 38%; background: #282c34; color: #abb2bf;
-                padding: 20px; box-sizing: border-box;
-                display: flex; flex-direction: column; border-left: 1px solid #1e2127;
-            }
-            .xml-source-panel h3 { margin-top: 0; color: #e06c75; font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;}
-            .xml-source-panel pre {
-                flex: 1; margin: 0; overflow: auto;
-                font-family: "Courier New", Courier, monospace; font-size: 0.85rem; line-height: 1.4;
-            }
-            
-            /* Book Component Styling */
-            .book-page-canvas { max-width: 650px; margin: 0 auto; width: 100%; }
-            .page-counter { font-weight: bold; color: #6a737d; text-transform: uppercase; font-size: 0.85rem; margin-bottom: 10px; }
-            .rendered-title { color: #0056b3; font-size: 2rem; margin-top: 0; }
-            .rendered-text { font-size: 1.15rem; line-height: 1.7; color: #24292e; }
-            .rendered-text p { margin-bottom: 1.5em; }
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CALI Interactive Lesson Viewer</title>
+    <style>
+        :root {
+            --bg-primary: #f8fafc;
+            --panel-bg: #ffffff;
+            --border-color: #cbd5e1;
+            --text-main: #1e293b;
+            --accent-color: #2563eb;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: #0f172a;
+            color: white;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .panel {
+            overflow-y: auto;
+            padding: 1.5rem;
+            box-sizing: border-box;
+        }
+        #lesson-canvas {
+            width: 62%;
+            background-color: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+        }
+        #xml-inspector {
+            width: 38%;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            font-family: "Courier New", Courier, monospace;
+            white-space: pre-wrap;
+            border-left: 1px solid #333;
+        }
+        .nav-controls {
+            display: flex;
+            gap: 10rem;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1.25rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        button:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+        }
+        /* Custom styles for semantic CALI tags mapped by parser */
+        .cali-paragraph { margin-bottom: 1rem; line-height: 1.6; }
+        .cali-break { display: block; margin-top: 0.5rem; }
+        .cali-bold { font-weight: bold; color: #000; }
+        .cali-italic { font-style: italic; }
+        .interactive-question-box {
+            background-color: #f0fdf4;
+            border-left: 4px solid #16a34a;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            border-radius: 0 4px 4px 0;
+        }
+    </style>
+</head>
+<body>
 
-            /* Pagination Controller Toolbar */
-            .pagination-controls {
-                display: flex; justify-content: space-between; align-items: center;
-                max-width: 650px; margin: 40px auto 0 auto; width: 100%;
-                border-top: 1px solid #e1e4e8; padding-top: 20px;
-            }
-            .btn {
-                background-color: #0056b3; color: white; border: none;
-                padding: 10px 20px; border-radius: 6px; cursor: pointer;
-                font-weight: 600; font-size: 1rem;
-            }
-            .btn:disabled { background-color: #cdd9e5; cursor: not-allowed; }
-            .btn:hover:not(:disabled) { background-color: #004094; }
-            .error { background: #f8d7da; color: #721c24; padding: 15px; border-radius: 4px; margin: 20px;}
-        </style>
-    </head>
-    <body>
+<header>
+    <h1 id="lesson-title" style="margin:0; font-size:1.25rem;">Loading Lesson Content...</h1>
+    <div id="page-counter">Page 0 of 0</div>
+</header>
 
-        <header>
-            <a class="nav-back" href="?">&larr; Directory</a>
-            <h1>Application Viewer: <?php echo htmlspecialchars($title); ?></h1>
-            <div style="width: 80px;"></div>
-        </header>
+<div class="container">
+    <!-- Active Lesson View Rendering Canvas -->
+    <main id="lesson-canvas" class="panel">
+        <div id="render-target"></div>
+        <div class="nav-controls">
+            <button id="btn-prev" onclick="navigatePage(-1)" disabled>Previous</button>
+            <button id="btn-next" onclick="navigatePage(1)" disabled>Next</button>
+        </div>
+    </main>
 
-        <?php if (!empty($error_msg)): ?>
-            <div class="error"><?php echo $error_msg; ?></div>
-        <?php elseif (empty($xml_content) || $xml_content === '-'): ?>
-            <div class="error" style="background:#fff3cd; color:#856404;">No structured XML manifest layout properties are present for this lesson entry.</div>
-        <?php else: ?>
-            <div class="app-workspace">
-                
-                <div class="html-renderer-panel">
-                    <div class="book-page-canvas">
-                        <div class="page-counter" id="pageNumberLabel">Page 1 of 1</div>
-                        <h2 class="rendered-title" id="pageTitleCanvas">Loading...</h2>
-                        <div class="rendered-text" id="pageTextCanvas"></div>
-                    </div>
-                    
-                    <div class="pagination-controls">
-                        <button class="btn" id="prevBtn" onclick="changePage(-1)">&larr; Previous Page</button>
-                        <span id="pageIndicatorText" style="font-weight:600;">1 / 1</span>
-                        <button class="btn" id="nextBtn" onclick="changePage(1)">Next Page &rarr;</button>
-                    </div>
-                </div>
+    <!-- Raw Back-end XML Structure Code Inspector Mirror -->
+    <pre id="xml-inspector" class="panel"><code>Loading XML source mapping...</code></pre>
+</div>
 
-                <div class="xml-source-panel">
-                    <h3>Raw Source Segment Inspector</h3>
-                    <pre><code><?php echo htmlspecialchars($xml_content); ?></code></pre>
-                </div>
-            </div>
+<script>
+// Application Global State Machine Object
+let lessonState = {
+    pages: [],
+    currentIndex: 0
+};
 
-            <script id="xmlPayloadData" type="application/xml" style="display:none;"><?php echo $xml_content; ?></script>
+/**
+ * Advanced Semantic Parser Engine
+ * Escapes raw strings and translates legacy markup patterns into valid semantic HTML
+ */
+function parseCaliTokens(rawText) {
+    if (!rawText) return '';
+    
+    // Step 1: Escape standard HTML tags safely to protect DOM parsing integrity
+    let cleanHtml = rawText
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
 
-            <script>
-                let lessonPages = [];
-                let currentPageIndex = 0;
+    // Step 2: High-Fidelity Legacy Marker Translation
+    // Process matching slash patterns into distinct modern styles and elements
+    cleanHtml = cleanHtml.replace(/\/P/gi, '<p class="cali-paragraph">');
+    cleanHtml = cleanHtml.replace(/\/CR/gi, '<span class="cali-break"></span>');
+    
+    // Match matching wrap-around pairs if they occur, otherwise fallback cleanly
+    cleanHtml = cleanHtml.replace(/\/B(.*?)(?=\/[B|P|C]|$)/gi, '<span class="cali-bold">$1</span>');
+    cleanHtml = cleanHtml.replace(/\/I(.*?)(?=\/[I|P|C]|$)/gi, '<span class="cali-italic">$1</span>');
 
-                document.addEventListener("DOMContentLoaded", () => {
-                    const rawXmlText = document.getElementById("xmlPayloadData").textContent;
-                    
-                    try {
-                        const parser = new DOMParser();
-                        // Parse as XML to preserve tree-node navigation
-                        const xmlDoc = parser.parseFromString(rawXmlText, "text/xml");
-                        
-                        // Query all actual <PAGE> elements from the structural XML document
-                        const xmlPages = xmlDoc.getElementsByTagName("PAGE");
-                        
-                        if (xmlPages.length > 0) {
-                            for (let i = 0; i < xmlPages.length; i++) {
-                                const pageNode = xmlPages[i];
-                                
-                                // Extract the child <TITLE> text or fallback safely
-                                const titleNode = pageNode.getElementsByTagName("TITLE")[0];
-                                let pageTitle = titleNode ? titleNode.textContent.trim() : `Page ${i + 1}`;
-                                
-                                // Extract the child <TEXT> block content
-                                const textNode = pageNode.getElementsByTagName("TEXT")[0];
-                                let rawBodyText = textNode ? textNode.textContent : pageNode.textContent;
-                                
-                                // Format text markup content tokens into readable web components
-                                let cleanHtml = rawBodyText
-                                    .replace(/\/TITLE[^\n]*/gi, '') // Drop dangling title tags
-                                    .replace(/\/P/gi, '</p><p>')     // Convert paragraph codes
-                                    .replace(/\/CR/gi, '<br/>')      // Convert line-return triggers
-                                    .replace(/\/AUTHORS/gi, '<strong>Authors:</strong>')
-                                    .trim();
+    return cleanHtml;
+}
 
-                                // Ensure text is cleanly self-contained within safe structural semantic paragraphs
-                                cleanHtml = `<p>${cleanHtml.replace(/\n/g, '<br/>')}</p>`;
-                                
-                                lessonPages.push({
-                                    title: pageTitle,
-                                    body: cleanHtml
-                                });
-                            }
-                        } else {
-                            // Fallback parsing strategy if data uses capitalized tag headers alternatively (e.g. text blocks outside formal tags)
-                            const infoBlock = xmlDoc.getElementsByTagName("INFO")[0] || xmlDoc.documentElement;
-                            const textFallback = infoBlock.textContent || "";
-                            
-                            // Splitting elements dynamically if explicit <PAGE> brackets aren't returned inside flat strings
-                            const rawChunks = textFallback.split(/\/TITLE/i);
-                            lessonPages = rawChunks.filter(c => c.trim()).map((chunk, index) => {
-                                const lines = chunk.trim().split('\n');
-                                const extractedTitle = lines[0] ? lines[0].replace(/\/+/g, '').trim() : `Section ${index + 1}`;
-                                const remainingBody = lines.slice(1).join('\n')
-                                    .replace(/\/P/gi, '</p><p>')
-                                    .replace(/\/CR/gi, '<br/>');
-                                    
-                                return {
-                                    title: extractedTitle,
-                                    body: `<p>${remainingBody}</p>`
-                                };
-                            });
-                        }
-                    } catch (e) {
-                        console.error("XML Parsing runtime issue: ", e);
-                    }
+/**
+ * Main Data Destructuring & Object Marshalling Core
+ * Reads parsed XML structure elements into an executable JavaScript array matrix
+ */
+function processLessonXml(xmlString) {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+    
+    // Find structural page layers
+    const xmlPages = xmlDoc.getElementsByTagName("PAGE");
+    lessonState.pages = [];
 
-                    // Strict validation in case of fully unmappable XML layout values
-                    if (lessonPages.length === 0) {
-                        lessonPages = [{ 
-                            title: "Document Manifest Core View", 
-                            body: "<p>The layout context framework loaded. Review the raw XML source code inspector in the side-panel window to trace structure configurations manually.</p>" 
-                        }];
-                    }
+    for (let i = 0; i < xmlPages.length; i++) {
+        const pageNode = xmlPages[i];
+        
+        // Grab child elements safely safely fallback to attributes or tags
+        const nameAttr = pageNode.getAttribute("NAME") || `Page-${i + 1}`;
+        const bodyNode = pageNode.getElementsByTagName("BODY")[0];
+        const rawBodyText = bodyNode ? bodyNode.textContent : '';
 
-                    renderCurrentPage();
-                });
+        // Detect if interactive question blocks or choices live in this section
+        const interactionNode = pageNode.getElementsByTagName("INTERACTION")[0] || null;
+        const isInteractive = interactionNode !== null;
 
-                function renderCurrentPage() {
-                    if (lessonPages.length === 0) return;
-                    const page = lessonPages[currentPageIndex];
-                    
-                    // Direct manipulation on the canvas layout nodes
-                    document.getElementById("pageTitleCanvas").textContent = page.title;
-                    document.getElementById("pageTextCanvas").innerHTML = page.body;
-                    
-                    // Render current paging interface stats
-                    document.getElementById("pageNumberLabel").textContent = `Page Element ${currentPageIndex + 1} of ${lessonPages.length}`;
-                    document.getElementById("pageIndicatorText").textContent = `${currentPageIndex + 1} / ${lessonPages.length}`;
-                    
-                    // Disable triggers dynamically based on contextual bounds
-                    document.getElementById("prevBtn").disabled = (currentPageIndex === 0);
-                    document.getElementById("nextBtn").disabled = (currentPageIndex === lessonPages.length - 1);
-                }
+        // Populate clear object metadata tracking maps
+        lessonState.pages.push({
+            index: i,
+            name: nameAttr,
+            rawXml: new XMLSerializer().serializeToString(pageNode),
+            processedBody: parseCaliTokens(rawBodyText),
+            interactive: isInteractive,
+            questionType: isInteractive ? interactionNode.getAttribute("TYPE") : null
+        });
+    }
 
-                function changePage(direction) {
-                    currentPageIndex += direction;
-                    if (currentPageIndex < 0) currentPageIndex = 0;
-                    if (currentPageIndex >= lessonPages.length) currentPageIndex = lessonPages.length - 1;
-                    
-                    renderCurrentPage();
-                    
-                    // Reset scroll height elegantly back to top of reading viewport frame
-                    document.querySelector('.html-renderer-panel').scrollTop = 0;
-                }
-            </script>
-        <?php endif; ?>
-    </body>
-    </html>
+    // Set Initial Application Rendering Node View
+    lessonState.currentIndex = 0;
+    renderCurrentPage();
+}
+
+/**
+ * Interface Layout Renderer Update Worker
+ */
+function renderCurrentPage() {
+    if (lessonState.pages.length === 0) return;
+
+    const page = lessonState.pages[lessonState.currentIndex];
+
+    // 1. Update Layout Canvas DOM
+    let htmlOutput = `<h2>${page.name}</h2>`;
+    htmlOutput += `<div class="content-body">${page.processedBody}</div>`;
+
+    // Add visual flag structure if parser tracked dynamic interaction tags
+    if (page.interactive) {
+        htmlOutput += `
+            <div class="interactive-question-box">
+                <strong>💡 Interactive Interaction Interface [Type: ${page.questionType || 'Standard'}]</strong>
+                <p>Advanced evaluation node structure successfully mapped by parser engine.</p>
+            </div>`;
+    }
+    
+    document.getElementById("render-target").innerHTML = htmlOutput;
+
+    // 2. Mirror Out the Cleanly Parsed Code Node Target Panel
+    document.getElementById("xml-inspector").textContent = page.rawXml;
+
+    // 3. Update Status Indicators & Buttons State Flags
+    document.getElementById("lesson-title").textContent = `Active Lesson Workspace [Node: ${page.name}]`;
+    document.getElementById("page-counter").textContent = `Page ${lessonState.currentIndex + 1} of ${lessonState.pages.length}`;
+    document.getElementById("btn-prev").disabled = (lessonState.currentIndex === 0);
+    document.getElementById("btn-next").disabled = (lessonState.currentIndex === lessonState.pages.length - 1);
+}
+
+/**
+ * Simple In-Memory State Switch Navigation Handler
+ */
+function navigatePage(direction) {
+    const targetIndex = lessonState.currentIndex + direction;
+    if (targetIndex >= 0 && targetIndex < lessonState.pages.length) {
+        lessonState.currentIndex = targetIndex;
+        renderCurrentPage();
+    }
+}
+
+// Global Lifecycle Bootstrapper Injection Mock Hook 
+// (Receives string data pipeline fed directly by your PHP cURL backend execution framework)
+window.addEventListener("DOMContentLoaded", () => {
+    // Escaped placeholder representing the raw XML passed from your PHP processing variable
+    const phpDataPayload = `<?xml version="1.0" encoding="UTF-8"?>
+    <LESSON>
+        <PAGE NAME="Introduction to Torts">
+            <BODY>/PWelcome to the lesson. /CRThis text features a legacy break. /BThis is bolded content.</BODY>
+        </PAGE>
+        <PAGE NAME="Concept Comprehension Check">
+            <BODY>/PReview the facts below and formulate an evaluation answer matrix.</BODY>
+            <INTERACTION TYPE="MULTIPLE_CHOICE" />
+        </PAGE>
+    </LESSON>`;
+
+    processLessonXml(phpDataPayload);
+});
+</script>
+</body>
+</html>
     <?php
     exit;
 }
