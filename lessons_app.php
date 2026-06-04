@@ -36,103 +36,58 @@ if (isset($_GET['view_lesson']) && !empty($_GET['view_lesson'])) {
         <style>
             body {
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                margin: 0;
-                padding: 0;
+                margin: 0; padding: 0;
                 background-color: #f0f2f5;
                 height: 100vh;
-                display: flex;
-                flex-direction: column;
+                display: flex; flex-direction: column;
             }
             header {
                 background: #fff;
                 padding: 15px 30px;
                 box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
+                display: flex; align-items: center; justify-content: space-between;
                 border-bottom: 1px solid #e1e4e8;
             }
-            .nav-back {
-                color: #0056b3;
-                text-decoration: none;
-                font-weight: bold;
-            }
+            .nav-back { color: #0056b3; text-decoration: none; font-weight: bold; }
             h1 { margin: 0; font-size: 1.35rem; color: #111; }
             
-            /* Split Screen Layout */
-            .app-workspace {
-                display: flex;
-                flex: 1;
-                overflow: hidden;
-            }
+            .app-workspace { display: flex; flex: 1; overflow: hidden; }
+            
             /* Left Panel: HTML Live Document Reader */
             .html-renderer-panel {
-                flex: 1;
-                padding: 40px;
-                overflow-y: auto;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
+                flex: 1; padding: 40px; overflow-y: auto;
+                display: flex; flex-direction: column; justify-content: space-between;
                 background: #fff;
             }
             /* Right Panel: RAW Code Inspector */
             .xml-source-panel {
-                width: 38%;
-                background: #282c34;
-                color: #abb2bf;
-                padding: 20px;
-                box-sizing: border-box;
-                display: flex;
-                flex-direction: column;
-                border-left: 1px solid #1e2127;
+                width: 38%; background: #282c34; color: #abb2bf;
+                padding: 20px; box-sizing: border-box;
+                display: flex; flex-direction: column; border-left: 1px solid #1e2127;
             }
             .xml-source-panel h3 { margin-top: 0; color: #e06c75; font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;}
             .xml-source-panel pre {
-                flex: 1;
-                margin: 0;
-                overflow: auto;
-                font-family: "Courier New", Courier, monospace;
-                font-size: 0.85rem;
-                line-height: 1.4;
+                flex: 1; margin: 0; overflow: auto;
+                font-family: "Courier New", Courier, monospace; font-size: 0.85rem; line-height: 1.4;
             }
             
             /* Book Component Styling */
-            .book-page-canvas {
-                max-width: 650px;
-                margin: 0 auto;
-                width: 100%;
-            }
-            .page-counter {
-                font-weight: bold;
-                color: #6a737d;
-                text-transform: uppercase;
-                font-size: 0.85rem;
-                margin-bottom: 10px;
-            }
+            .book-page-canvas { max-width: 650px; margin: 0 auto; width: 100%; }
+            .page-counter { font-weight: bold; color: #6a737d; text-transform: uppercase; font-size: 0.85rem; margin-bottom: 10px; }
             .rendered-title { color: #0056b3; font-size: 2rem; margin-top: 0; }
             .rendered-text { font-size: 1.15rem; line-height: 1.7; color: #24292e; }
             .rendered-text p { margin-bottom: 1.5em; }
 
             /* Pagination Controller Toolbar */
             .pagination-controls {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                max-width: 650px;
-                margin: 40px auto 0 auto;
-                width: 100%;
-                border-top: 1px solid #e1e4e8;
-                padding-top: 20px;
+                display: flex; justify-content: space-between; align-items: center;
+                max-width: 650px; margin: 40px auto 0 auto; width: 100%;
+                border-top: 1px solid #e1e4e8; padding-top: 20px;
             }
             .btn {
-                background-color: #0056b3;
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                border-radius: 6px;
-                cursor: pointer;
-                font-weight: 600;
-                font-size: 1rem;
+                background-color: #0056b3; color: white; border: none;
+                padding: 10px 20px; border-radius: 6px; cursor: pointer;
+                font-weight: 600; font-size: 1rem;
             }
             .btn:disabled { background-color: #cdd9e5; cursor: not-allowed; }
             .btn:hover:not(:disabled) { background-color: #004094; }
@@ -177,7 +132,6 @@ if (isset($_GET['view_lesson']) && !empty($_GET['view_lesson'])) {
             <script id="xmlPayloadData" type="application/xml" style="display:none;"><?php echo $xml_content; ?></script>
 
             <script>
-                // JavaScript State Machine for driving pages dynamically
                 let lessonPages = [];
                 let currentPageIndex = 0;
 
@@ -185,52 +139,70 @@ if (isset($_GET['view_lesson']) && !empty($_GET['view_lesson'])) {
                     const rawXmlText = document.getElementById("xmlPayloadData").textContent;
                     
                     try {
-                        // Use Browser DOMParser to convert the raw string into an interactable XML document object
                         const parser = new DOMParser();
+                        // Parse as XML to preserve tree-node navigation
                         const xmlDoc = parser.parseFromString(rawXmlText, "text/xml");
                         
-                        // CALI XML layout contains information nodes (often wrapped inside customized metadata blocks)
-                        // For demonstration, let's treat chunks separated by text blocks or lines as sub-elements,
-                        // or pull specific content patterns out. Let's parse all continuous strings.
-                        const rawTextContent = xmlDoc.textContent || xmlDoc.getElementsByTagName("INFO")[0]?.textContent;
+                        // Query all actual <PAGE> elements from the structural XML document
+                        const xmlPages = xmlDoc.getElementsByTagName("PAGE");
                         
-                        if (rawTextContent) {
-                            // Let's dynamically divide the data by custom block keywords like /TITLE or clear milestones 
-                            // to mock a real page flip routine:
-                            const chunks = rawTextContent.split(/(?=\/TITLE|\/BOOK)/g);
-                            
-                            lessonPages = chunks.map((chunk, index) => {
-                                // Extract pseudo titles or formatting cleanups
-                                let pageTitle = "Section Context - Part " + (index + 1);
-                                if(chunk.includes("TITLE")) {
-                                    const match = chunk.match(/TITLE\s+([^\n\/]+)/i);
-                                    if(match && match[1]) pageTitle = match[1].trim();
-                                }
+                        if (xmlPages.length > 0) {
+                            for (let i = 0; i < xmlPages.length; i++) {
+                                const pageNode = xmlPages[i];
                                 
-                                // Convert custom slashes and format tags into HTML equivalents
-                                let cleanHtml = chunk
-                                    .replace(/\/TITLE[^\n]*/g, '')
-                                    .replace(/\/BOOK[^\n]*/g, '')
-                                    .replace(/\/AUTHORS/g, '<strong>Authors:</strong>')
-                                    .replace(/\/CR/g, '<br/>')
-                                    .replace(/\/P/g, '</p><p>')
+                                // Extract the child <TITLE> text or fallback safely
+                                const titleNode = pageNode.getElementsByTagName("TITLE")[0];
+                                let pageTitle = titleNode ? titleNode.textContent.trim() : `Page ${i + 1}`;
+                                
+                                // Extract the child <TEXT> block content
+                                const textNode = pageNode.getElementsByTagName("TEXT")[0];
+                                let rawBodyText = textNode ? textNode.textContent : pageNode.textContent;
+                                
+                                // Format text markup content tokens into readable web components
+                                let cleanHtml = rawBodyText
+                                    .replace(/\/TITLE[^\n]*/gi, '') // Drop dangling title tags
+                                    .replace(/\/P/gi, '</p><p>')     // Convert paragraph codes
+                                    .replace(/\/CR/gi, '<br/>')      // Convert line-return triggers
+                                    .replace(/\/AUTHORS/gi, '<strong>Authors:</strong>')
                                     .trim();
 
-                                // Wrap in regular semantic paragraphs
-                                cleanHtml = "<p>" + cleanHtml.replace(/\n/g, '<br/>') + "</p>";
+                                // Ensure text is cleanly self-contained within safe structural semantic paragraphs
+                                cleanHtml = `<p>${cleanHtml.replace(/\n/g, '<br/>')}</p>`;
                                 
-                                return { title: pageTitle, body: cleanHtml };
+                                lessonPages.push({
+                                    title: pageTitle,
+                                    body: cleanHtml
+                                });
+                            }
+                        } else {
+                            // Fallback parsing strategy if data uses capitalized tag headers alternatively (e.g. text blocks outside formal tags)
+                            const infoBlock = xmlDoc.getElementsByTagName("INFO")[0] || xmlDoc.documentElement;
+                            const textFallback = infoBlock.textContent || "";
+                            
+                            // Splitting elements dynamically if explicit <PAGE> brackets aren't returned inside flat strings
+                            const rawChunks = textFallback.split(/\/TITLE/i);
+                            lessonPages = rawChunks.filter(c => c.trim()).map((chunk, index) => {
+                                const lines = chunk.trim().split('\n');
+                                const extractedTitle = lines[0] ? lines[0].replace(/\/+/g, '').trim() : `Section ${index + 1}`;
+                                const remainingBody = lines.slice(1).join('\n')
+                                    .replace(/\/P/gi, '</p><p>')
+                                    .replace(/\/CR/gi, '<br/>');
+                                    
+                                return {
+                                    title: extractedTitle,
+                                    body: `<p>${remainingBody}</p>`
+                                };
                             });
                         }
                     } catch (e) {
-                        console.error("XML Parse issue: ", e);
+                        console.error("XML Parsing runtime issue: ", e);
                     }
 
-                    // Fallback configuration if XML schema format parsing didn't map rows safely
+                    // Strict validation in case of fully unmappable XML layout values
                     if (lessonPages.length === 0) {
                         lessonPages = [{ 
                             title: "Document Manifest Core View", 
-                            body: "<p>The layout manifest was parsed successfully. Look at the right panel to examine its raw attributes structure.</p>" 
+                            body: "<p>The layout context framework loaded. Review the raw XML source code inspector in the side-panel window to trace structure configurations manually.</p>" 
                         }];
                     }
 
@@ -238,28 +210,30 @@ if (isset($_GET['view_lesson']) && !empty($_GET['view_lesson'])) {
                 });
 
                 function renderCurrentPage() {
+                    if (lessonPages.length === 0) return;
                     const page = lessonPages[currentPageIndex];
                     
-                    // Inject updates into document nodes
+                    // Direct manipulation on the canvas layout nodes
                     document.getElementById("pageTitleCanvas").textContent = page.title;
                     document.getElementById("pageTextCanvas").innerHTML = page.body;
                     
-                    // Update layout interface state engines
-                    document.getElementById("pageNumberLabel").textContent = `Element Node ${currentPageIndex + 1} of ${lessonPages.length}`;
+                    // Render current paging interface stats
+                    document.getElementById("pageNumberLabel").textContent = `Page Element ${currentPageIndex + 1} of ${lessonPages.length}`;
                     document.getElementById("pageIndicatorText").textContent = `${currentPageIndex + 1} / ${lessonPages.length}`;
                     
-                    // Handle button states
+                    // Disable triggers dynamically based on contextual bounds
                     document.getElementById("prevBtn").disabled = (currentPageIndex === 0);
                     document.getElementById("nextBtn").disabled = (currentPageIndex === lessonPages.length - 1);
                 }
 
                 function changePage(direction) {
                     currentPageIndex += direction;
-                    if(currentPageIndex < 0) currentPageIndex = 0;
-                    if(currentPageIndex >= lessonPages.length) currentPageIndex = lessonPages.length - 1;
+                    if (currentPageIndex < 0) currentPageIndex = 0;
+                    if (currentPageIndex >= lessonPages.length) currentPageIndex = lessonPages.length - 1;
+                    
                     renderCurrentPage();
                     
-                    // Smooth reset scroll elevation
+                    // Reset scroll height elegantly back to top of reading viewport frame
                     document.querySelector('.html-renderer-panel').scrollTop = 0;
                 }
             </script>
@@ -300,59 +274,20 @@ if ($response !== false) {
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 850px;
-            margin: 40px auto;
-            padding: 0 20px;
+            line-height: 1.6; color: #333; max-width: 850px; margin: 40px auto; padding: 0 20px;
             background-color: #f8f9fa;
         }
-        h1 {
-            color: #111;
-            border-bottom: 2px solid #e1e4e8;
-            padding-bottom: 12px;
-            margin-bottom: 30px;
-        }
-        .lesson-card {
-            background: #fff;
-            padding: 25px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-            border: 1px solid #e1e4e8;
-        }
-        .lesson-title {
-            margin-top: 0;
-            color: #0056b3;
-            font-size: 1.4rem;
-        }
-        .lesson-body {
-            color: #444;
-            margin-bottom: 20px;
-        }
-        .action-bar {
-            display: flex;
-            gap: 12px;
-        }
+        h1 { color: #111; border-bottom: 2px solid #e1e4e8; padding-bottom: 12px; margin-bottom: 30px; }
+        .lesson-card { background: #fff; padding: 25px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); border: 1px solid #e1e4e8; }
+        .lesson-title { margin-top: 0; color: #0056b3; font-size: 1.4rem; }
+        .lesson-body { color: #444; margin-bottom: 20px; }
         .app-btn {
-            display: inline-flex;
-            align-items: center;
-            background-color: #28a745;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 5px;
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 600;
+            display: inline-flex; align-items: center; background-color: #28a745; color: white;
+            padding: 8px 16px; border-radius: 5px; text-decoration: none; font-size: 0.9rem; font-weight: 600;
             transition: background 0.2s;
         }
         .app-btn:hover { background-color: #218838; }
-        .no-results {
-            padding: 20px;
-            background: #fff3cd;
-            color: #856404;
-            border-radius: 4px;
-        }
+        .no-results { padding: 20px; background: #fff3cd; color: #856404; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -368,14 +303,12 @@ if ($response !== false) {
             ?>
             <article class="lesson-card">
                 <h2 class="lesson-title"><?php echo $title; ?></h2>
-                
                 <div class="lesson-body">
                     <?php echo $body; ?>
                 </div>
-
                 <div class="action-bar">
                     <a class="app-btn" href="?view_lesson=<?php echo urlencode($uuid); ?>">
-                        &nbsp;Launch Interactive XML App &rarr;
+                        Launch Interactive XML App &rarr;
                     </a>
                 </div>
             </article>
