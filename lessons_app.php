@@ -261,7 +261,7 @@ window.addEventListener("DOMContentLoaded", () => {
 // -------------------------------------------------------------------------
 // ROUTE 2: Main Directory Listing Mode (Default View)
 // -------------------------------------------------------------------------
-
+<?php
 $params = [
     'filter' => [
         'field_lesson_type' => 'CALI Author'
