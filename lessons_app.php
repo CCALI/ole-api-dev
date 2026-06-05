@@ -39,101 +39,121 @@ if ($lessonId) {
             ? $jsonData['data']['attributes']['title'] 
             : 'Lesson Workspace';
     } else {
-        $xmlPayload = "<LESSON><PAGE NAME='Error'><BODY>/PFailed to fetch lesson data from Drupal API. (HTTP $httpCode)</BODY></PAGE></LESSON>";
+        $error_msg = "Failed to fetch the XML payload for this lesson.";
     }
-} else {
-    // Fallback if the user navigates directly to the app without picking a lesson from your directory
-    $xmlPayload = "<LESSON><PAGE NAME='No Lesson Selected'><BODY>/PPlease return to the lesson directory and select a valid interactive lesson to begin.</BODY></PAGE></LESSON>";
-}
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title><?php echo htmlspecialchars($lessonTitle); ?></title>
-    <style>
-        :root {
-            --bg-primary: #f8fafc;
-            --panel-bg: #ffffff;
-            --border-color: #cbd5e1;
-            --text-main: #1e293b;
-            --accent-color: #2563eb;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-primary);
-            color: var(--text-main);
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-        header {
-            background-color: #0f172a;
-            color: white;
-            padding: 1rem 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .container {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
-        .panel {
-            overflow-y: auto;
-            padding: 1.5rem;
-            box-sizing: border-box;
-        }
-        #lesson-canvas {
-            width: 62%;
-            background-color: var(--panel-bg);
-            border-right: 1px solid var(--border-color);
-        }
-        #xml-inspector {
-            width: 38%;
-            background-color: #1e1e1e;
-            color: #d4d4d4;
-            font-family: "Courier New", Courier, monospace;
-            white-space: pre-wrap;
-            border-left: 1px solid #333;
-        }
-        .nav-controls {
-            display: flex;
-            gap: 10rem;
-            margin-top: 1.5rem;
-            padding-top: 1rem;
-            border-top: 1px solid var(--border-color);
-        }
-        button {
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            padding: 0.5rem 1.25rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-        button:disabled {
-            background-color: #94a3b8;
-            cursor: not-allowed;
-        }
-        .cali-paragraph { margin-bottom: 1rem; line-height: 1.6; }
-        .cali-break { display: block; margin-top: 0.5rem; }
-        .cali-bold { font-weight: bold; color: #000; }
-        .cali-italic { font-style: italic; }
-        .interactive-question-box {
-            background-color: #f0fdf4;
-            border-left: 4px solid #16a34a;
-            padding: 1rem;
-            margin: 1.5rem 0;
-            border-radius: 0 4px 4px 0;
-        }
-    </style>
-</head>
-<body>
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Interactive Application: <?php echo htmlspecialchars($title); ?></title>
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: #f0f2f5;
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+            header {
+                background: #fff;
+                padding: 15px 30px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                border-bottom: 1px solid #e1e4e8;
+            }
+            .nav-back {
+                color: #0056b3;
+                text-decoration: none;
+                font-weight: bold;
+            }
+            h1 { margin: 0; font-size: 1.35rem; color: #111; }
+            
+            /* Split Screen Layout */
+            .app-workspace {
+                display: flex;
+                flex: 1;
+                overflow: hidden;
+            }
+            /* Left Panel: HTML Live Document Reader */
+            .html-renderer-panel {
+                flex: 1;
+                padding: 40px;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                background: #fff;
+            }
+            /* Right Panel: RAW Code Inspector */
+            .xml-source-panel {
+                width: 38%;
+                background: #282c34;
+                color: #abb2bf;
+                padding: 20px;
+                box-sizing: border-box;
+                display: flex;
+                flex-direction: column;
+                border-left: 1px solid #1e2127;
+            }
+            .xml-source-panel h3 { margin-top: 0; color: #e06c75; font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;}
+            .xml-source-panel pre {
+                flex: 1;
+                margin: 0;
+                overflow: auto;
+                font-family: "Courier New", Courier, monospace;
+                font-size: 0.85rem;
+                line-height: 1.4;
+            }
+            
+            /* Book Component Styling */
+            .book-page-canvas {
+                max-width: 650px;
+                margin: 0 auto;
+                width: 100%;
+            }
+            .page-counter {
+                font-weight: bold;
+                color: #6a737d;
+                text-transform: uppercase;
+                font-size: 0.85rem;
+                margin-bottom: 10px;
+            }
+            .rendered-title { color: #0056b3; font-size: 2rem; margin-top: 0; }
+            .rendered-text { font-size: 1.15rem; line-height: 1.7; color: #24292e; }
+            .rendered-text p { margin-bottom: 1.5em; }
+
+            /* Pagination Controller Toolbar */
+            .pagination-controls {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                max-width: 650px;
+                margin: 40px auto 0 auto;
+                width: 100%;
+                border-top: 1px solid #e1e4e8;
+                padding-top: 20px;
+            }
+            .btn {
+                background-color: #0056b3;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 1rem;
+            }
+            .btn:disabled { background-color: #cdd9e5; cursor: not-allowed; }
+            .btn:hover:not(:disabled) { background-color: #004094; }
+            .error { background: #f8d7da; color: #721c24; padding: 15px; border-radius: 4px; margin: 20px;}
+        </style>
+    </head>
+    <body>
 
 <header>
     <h1 id="lesson-title" style="margin:0; font-size:1.25rem;"><?php echo htmlspecialchars($lessonTitle); ?></h1>
@@ -152,70 +172,82 @@ if ($lessonId) {
     <pre id="xml-inspector" class="panel"><code>Loading XML source mapping...</code></pre>
 </div>
 
-<script>
-let lessonState = {
-    pages: [],
-    currentIndex: 0
-};
+            <script>
+                // JavaScript State Machine for driving pages dynamically
+                let lessonPages = [];
+                let currentPageIndex = 0;
 
-function parseCaliTokens(rawText) {
-    if (!rawText) return '';
-    
-    let cleanHtml = rawText
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt bridge;");
+                document.addEventListener("DOMContentLoaded", () => {
+                    const rawXmlText = document.getElementById("xmlPayloadData").textContent;
+                    
+                    try {
+                        // Use Browser DOMParser to convert the raw string into an interactable XML document object
+                        const parser = new DOMParser();
+                        const xmlDoc = parser.parseFromString(rawXmlText, "text/xml");
+                        
+                        // CALI XML layout contains information nodes (often wrapped inside customized metadata blocks)
+                        // For demonstration, let's treat chunks separated by text blocks or lines as sub-elements,
+                        // or pull specific content patterns out. Let's parse all continuous strings.
+                        const rawTextContent = xmlDoc.textContent || xmlDoc.getElementsByTagName("INFO")[0]?.textContent;
+                        
+                        if (rawTextContent) {
+                            // Let's dynamically divide the data by custom block keywords like /TITLE or clear milestones 
+                            // to mock a real page flip routine:
+                            const chunks = rawTextContent.split(/(?=\/TITLE|\/BOOK)/g);
+                            
+                            lessonPages = chunks.map((chunk, index) => {
+                                // Extract pseudo titles or formatting cleanups
+                                let pageTitle = "Section Context - Part " + (index + 1);
+                                if(chunk.includes("TITLE")) {
+                                    const match = chunk.match(/TITLE\s+([^\n\/]+)/i);
+                                    if(match && match[1]) pageTitle = match[1].trim();
+                                }
+                                
+                                // Convert custom slashes and format tags into HTML equivalents
+                                let cleanHtml = chunk
+                                    .replace(/\/TITLE[^\n]*/g, '')
+                                    .replace(/\/BOOK[^\n]*/g, '')
+                                    .replace(/\/AUTHORS/g, '<strong>Authors:</strong>')
+                                    .replace(/\/CR/g, '<br/>')
+                                    .replace(/\/P/g, '</p><p>')
+                                    .trim();
 
-    cleanHtml = cleanHtml.replace(/\/P/gi, '<p class="cali-paragraph">');
-    cleanHtml = cleanHtml.replace(/\/CR/gi, '<span class="cali-break"></span>');
-    cleanHtml = cleanHtml.replace(/\/B(.*?)(?=\/[B|P|C]|$)/gi, '<span class="cali-bold">$1</span>');
-    cleanHtml = cleanHtml.replace(/\/I(.*?)(?=\/[I|P|C]|$)/gi, '<span class="cali-italic">$1</span>');
+                                // Wrap in regular semantic paragraphs
+                                cleanHtml = "<p>" + cleanHtml.replace(/\n/g, '<br/>') + "</p>";
+                                
+                                return { title: pageTitle, body: cleanHtml };
+                            });
+                        }
+                    } catch (e) {
+                        console.error("XML Parse issue: ", e);
+                    }
 
-    return cleanHtml;
-}
+                    // Fallback configuration if XML schema format parsing didn't map rows safely
+                    if (lessonPages.length === 0) {
+                        lessonPages = [{ 
+                            title: "Document Manifest Core View", 
+                            body: "<p>The layout manifest was parsed successfully. Look at the right panel to examine its raw attributes structure.</p>" 
+                        }];
+                    }
 
-function processLessonXml(xmlString) {
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(xmlString, "text/xml");
-    
-    const xmlPages = xmlDoc.getElementsByTagName("PAGE");
-    lessonState.pages = [];
+                    renderCurrentPage();
+                });
 
-    // If XML doesn't contain explicit PAGE components, wrap the whole response safely
-    if (xmlPages.length === 0) {
-        lessonState.pages.push({
-            index: 0,
-            name: "Lesson Content",
-            rawXml: xmlString,
-            processedBody: parseCaliTokens(xmlString),
-            interactive: false,
-            questionType: null
-        });
-    } else {
-        for (let i = 0; i < xmlPages.length; i++) {
-            const pageNode = xmlPages[i];
-            const nameAttr = pageNode.getAttribute("NAME") || `Page-${i + 1}`;
-            const bodyNode = pageNode.getElementsByTagName("BODY")[0];
-            const rawBodyText = bodyNode ? bodyNode.textContent : '';
-
-            const interactionNode = pageNode.getElementsByTagName("INTERACTION")[0] || null;
-            const isInteractive = interactionNode !== null;
-
-            lessonState.pages.push({
-                index: i,
-                name: nameAttr,
-                rawXml: new XMLSerializer().serializeToString(pageNode),
-                processedBody: parseCaliTokens(rawBodyText),
-                interactive: isInteractive,
-                questionType: isInteractive ? interactionNode.getAttribute("TYPE") : null
-            });
-        }
-    }
-
-    lessonState.currentIndex = 0;
-    renderCurrentPage();
-}
-
+                function renderCurrentPage() {
+                    const page = lessonPages[currentPageIndex];
+                    
+                    // Inject updates into document nodes
+                    document.getElementById("pageTitleCanvas").textContent = page.title;
+                    document.getElementById("pageTextCanvas").innerHTML = page.body;
+                    
+                    // Update layout interface state engines
+                    document.getElementById("pageNumberLabel").textContent = `Element Node ${currentPageIndex + 1} of ${lessonPages.length}`;
+                    document.getElementById("pageIndicatorText").textContent = `${currentPageIndex + 1} / ${lessonPages.length}`;
+                    
+                    // Handle button states
+                    document.getElementById("prevBtn").disabled = (currentPageIndex === 0);
+                    document.getElementById("nextBtn").disabled = (currentPageIndex === lessonPages.length - 1);
+                }
 function renderCurrentPage() {
     if (lessonState.pages.length === 0) return;
 
@@ -240,21 +272,136 @@ function renderCurrentPage() {
     document.getElementById("btn-next").disabled = (lessonState.currentIndex === lessonState.pages.length - 1);
 }
 
-function navigatePage(direction) {
-    const targetIndex = lessonState.currentIndex + direction;
-    if (targetIndex >= 0 && targetIndex < lessonState.pages.length) {
-        lessonState.currentIndex = targetIndex;
-        renderCurrentPage();
-    }
+                function changePage(direction) {
+                    currentPageIndex += direction;
+                    if(currentPageIndex < 0) currentPageIndex = 0;
+                    if(currentPageIndex >= lessonPages.length) currentPageIndex = lessonPages.length - 1;
+                    renderCurrentPage();
+                    
+                    // Smooth reset scroll elevation
+                    document.querySelector('.html-renderer-panel').scrollTop = 0;
+                }
+            </script>
+        <?php endif; ?>
+    </body>
+    </html>
+    <?php
+    exit;
 }
 
-// Safely bridge the real PHP XML payload string directly into the JS execution loop
-window.addEventListener("DOMContentLoaded", () => {
-    const realXmlPayload = `<?php echo json_encode($xmlPayload); ?>`;
-    // Clean outer JSON quotes added by json_encode helper safely
-    const cleanXml = JSON.parse(realXmlPayload);
-    processLessonXml(cleanXml);
-});
-</script>
+// -------------------------------------------------------------------------
+// ROUTE 2: Main Directory Listing Mode (Default View)
+// -------------------------------------------------------------------------
+$params = [
+    'filter' => [
+        'field_lesson_type' => 'CALI Author'
+    ],
+    'fields' => [
+        'node--lesson' => 'id,title,body'
+    ]
+];
+
+$full_url = $base_url . '?' . http_build_query($params);
+$response = @file_get_contents($full_url);
+$lessons = [];
+
+if ($response !== false) {
+    $payload = json_decode($response, true);
+    $lessons = $payload['data'] ?? [];
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CALI Author Lessons Directory</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 850px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background-color: #f8f9fa;
+        }
+        h1 {
+            color: #111;
+            border-bottom: 2px solid #e1e4e8;
+            padding-bottom: 12px;
+            margin-bottom: 30px;
+        }
+        .lesson-card {
+            background: #fff;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            border: 1px solid #e1e4e8;
+        }
+        .lesson-title {
+            margin-top: 0;
+            color: #0056b3;
+            font-size: 1.4rem;
+        }
+        .lesson-body {
+            color: #444;
+            margin-bottom: 20px;
+        }
+        .action-bar {
+            display: flex;
+            gap: 12px;
+        }
+        .app-btn {
+            display: inline-flex;
+            align-items: center;
+            background-color: #28a745;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .app-btn:hover { background-color: #218838; }
+        .no-results {
+            padding: 20px;
+            background: #fff3cd;
+            color: #856404;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>CALI Author Lessons Interactive Portal</h1>
+
+    <?php if (!empty($lessons)): ?>
+        <?php foreach ($lessons as $lesson): ?>
+            <?php 
+                $uuid = $lesson['id'];
+                $title = htmlspecialchars($lesson['attributes']['title'] ?? 'Untitled Lesson');
+                $body = $lesson['attributes']['body']['processed'] ?? '<p>No description available.</p>';
+            ?>
+            <article class="lesson-card">
+                <h2 class="lesson-title"><?php echo $title; ?></h2>
+                
+                <div class="lesson-body">
+                    <?php echo $body; ?>
+                </div>
+
+                <div class="action-bar">
+                    <a class="app-btn" href="?view_lesson=<?php echo urlencode($uuid); ?>">
+                        &nbsp;Launch Interactive XML App &rarr;
+                    </a>
+                </div>
+            </article>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <p class="no-results">No compatible lessons could be downloaded from the API endpoint.</p>
+    <?php endif; ?>
+
 </body>
 </html>
