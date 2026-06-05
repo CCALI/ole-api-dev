@@ -2,37 +2,55 @@
 // Define the base URL for the Drupal JSON:API endpoint
 $base_url = "http://d10dev.calidev.org/jsonapi/node/lesson";
 
-// -------------------------------------------------------------------------
-// ROUTE 1: Interactive Lesson Page Viewer Mode
-// -------------------------------------------------------------------------
-if (isset($_GET['view_lesson']) && !empty($_GET['view_lesson'])) {
-    $lesson_id = $_GET['view_lesson'];
-    
-    // Fetch only the specific lesson node by its UUID, requesting title and the XML data
-    $single_lesson_url = $base_url . '/' . urlencode($lesson_id) . '?fields[node--lesson]=title,field_lesson_xml';
-    $response = @file_get_contents($single_lesson_url);
-    
-    $title = "Interactive Lesson";
-    $xml_content = "";
-    $error_msg = "";
+/**
+ * lessons_app.php
+ * Dynamic Drupal 10 JSON:API Client & Interactive Lesson Parser
+ */
 
-    if ($response !== false) {
-        $payload = json_decode($response, true);
-        if (isset($payload['data'])) {
-            $title = $payload['data']['attributes']['title'] ?? 'Untitled Lesson';
-            $xml_content = $payload['data']['attributes']['field_lesson_xml'] ?? '';
-        } else {
-            $error_msg = "Lesson records could not be read.";
-        }
+// 1. Grab the active lesson ID/URL parameter passed from your directory
+$lessonId = isset($_GET['lesson_id']) ? $_GET['lesson_id'] : null;
+$xmlPayload = '';
+$lessonTitle = 'Interactive Lesson Viewer';
+
+if ($lessonId) {
+    // Replace this URL with your actual Drupal 10 JSON:API endpoint if needed
+    $apiUrl = "http://d10dev.calidev.org/jsonapi/node/lesson/" . urlencode($lessonId);
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $apiUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    // If working on a local dev environment with self-signed SSL:
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200 && $response) {
+        $jsonData = json_decode($response, true);
+        
+        // Extract the XML field data and title from the Drupal JSON:API schema
+        // Adjust the attribute keys ('field_lesson_xml' / 'title') to match your Drupal fields
+        $xmlPayload = isset($jsonData['data']['attributes']['field_lesson_xml']) 
+            ? $jsonData['data']['attributes']['field_lesson_xml'] 
+            : '';
+        $lessonTitle = isset($jsonData['data']['attributes']['title']) 
+            ? $jsonData['data']['attributes']['title'] 
+            : 'Lesson Workspace';
     } else {
-        $error_msg = "Failed to fetch the XML payload for this lesson.";
+        $xmlPayload = "<LESSON><PAGE NAME='Error'><BODY>/PFailed to fetch lesson data from Drupal API. (HTTP $httpCode)</BODY></PAGE></LESSON>";
     }
-    ?>
-    <!DOCTYPE html>
+} else {
+    // Fallback if the user navigates directly to the app without picking a lesson from your directory
+    $xmlPayload = "<LESSON><PAGE NAME='No Lesson Selected'><BODY>/PPlease return to the lesson directory and select a valid interactive lesson to begin.</BODY></PAGE></LESSON>";
+}
+?>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>CALI Interactive Lesson Viewer</title>
+    <title><?php echo htmlspecialchars($lessonTitle); ?></title>
     <style>
         :root {
             --bg-primary: #f8fafc;
@@ -102,7 +120,6 @@ if (isset($_GET['view_lesson']) && !empty($_GET['view_lesson'])) {
             background-color: #94a3b8;
             cursor: not-allowed;
         }
-        /* Custom styles for semantic CALI tags mapped by parser */
         .cali-paragraph { margin-bottom: 1rem; line-height: 1.6; }
         .cali-break { display: block; margin-top: 0.5rem; }
         .cali-bold { font-weight: bold; color: #000; }
@@ -119,12 +136,11 @@ if (isset($_GET['view_lesson']) && !empty($_GET['view_lesson'])) {
 <body>
 
 <header>
-    <h1 id="lesson-title" style="margin:0; font-size:1.25rem;">Loading Lesson Content...</h1>
+    <h1 id="lesson-title" style="margin:0; font-size:1.25rem;"><?php echo htmlspecialchars($lessonTitle); ?></h1>
     <div id="page-counter">Page 0 of 0</div>
 </header>
 
 <div class="container">
-    <!-- Active Lesson View Rendering Canvas -->
     <main id="lesson-canvas" class="panel">
         <div id="render-target"></div>
         <div class="nav-controls">
@@ -133,118 +149,97 @@ if (isset($_GET['view_lesson']) && !empty($_GET['view_lesson'])) {
         </div>
     </main>
 
-    <!-- Raw Back-end XML Structure Code Inspector Mirror -->
     <pre id="xml-inspector" class="panel"><code>Loading XML source mapping...</code></pre>
 </div>
 
 <script>
-// Application Global State Machine Object
 let lessonState = {
     pages: [],
     currentIndex: 0
 };
 
-/**
- * Advanced Semantic Parser Engine
- * Escapes raw strings and translates legacy markup patterns into valid semantic HTML
- */
 function parseCaliTokens(rawText) {
     if (!rawText) return '';
     
-    // Step 1: Escape standard HTML tags safely to protect DOM parsing integrity
     let cleanHtml = rawText
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+        .replace(/>/g, "&gt bridge;");
 
-    // Step 2: High-Fidelity Legacy Marker Translation
-    // Process matching slash patterns into distinct modern styles and elements
     cleanHtml = cleanHtml.replace(/\/P/gi, '<p class="cali-paragraph">');
     cleanHtml = cleanHtml.replace(/\/CR/gi, '<span class="cali-break"></span>');
-    
-    // Match matching wrap-around pairs if they occur, otherwise fallback cleanly
     cleanHtml = cleanHtml.replace(/\/B(.*?)(?=\/[B|P|C]|$)/gi, '<span class="cali-bold">$1</span>');
     cleanHtml = cleanHtml.replace(/\/I(.*?)(?=\/[I|P|C]|$)/gi, '<span class="cali-italic">$1</span>');
 
     return cleanHtml;
 }
 
-/**
- * Main Data Destructuring & Object Marshalling Core
- * Reads parsed XML structure elements into an executable JavaScript array matrix
- */
 function processLessonXml(xmlString) {
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(xmlString, "text/xml");
     
-    // Find structural page layers
     const xmlPages = xmlDoc.getElementsByTagName("PAGE");
     lessonState.pages = [];
 
-    for (let i = 0; i < xmlPages.length; i++) {
-        const pageNode = xmlPages[i];
-        
-        // Grab child elements safely safely fallback to attributes or tags
-        const nameAttr = pageNode.getAttribute("NAME") || `Page-${i + 1}`;
-        const bodyNode = pageNode.getElementsByTagName("BODY")[0];
-        const rawBodyText = bodyNode ? bodyNode.textContent : '';
-
-        // Detect if interactive question blocks or choices live in this section
-        const interactionNode = pageNode.getElementsByTagName("INTERACTION")[0] || null;
-        const isInteractive = interactionNode !== null;
-
-        // Populate clear object metadata tracking maps
+    // If XML doesn't contain explicit PAGE components, wrap the whole response safely
+    if (xmlPages.length === 0) {
         lessonState.pages.push({
-            index: i,
-            name: nameAttr,
-            rawXml: new XMLSerializer().serializeToString(pageNode),
-            processedBody: parseCaliTokens(rawBodyText),
-            interactive: isInteractive,
-            questionType: isInteractive ? interactionNode.getAttribute("TYPE") : null
+            index: 0,
+            name: "Lesson Content",
+            rawXml: xmlString,
+            processedBody: parseCaliTokens(xmlString),
+            interactive: false,
+            questionType: null
         });
+    } else {
+        for (let i = 0; i < xmlPages.length; i++) {
+            const pageNode = xmlPages[i];
+            const nameAttr = pageNode.getAttribute("NAME") || `Page-${i + 1}`;
+            const bodyNode = pageNode.getElementsByTagName("BODY")[0];
+            const rawBodyText = bodyNode ? bodyNode.textContent : '';
+
+            const interactionNode = pageNode.getElementsByTagName("INTERACTION")[0] || null;
+            const isInteractive = interactionNode !== null;
+
+            lessonState.pages.push({
+                index: i,
+                name: nameAttr,
+                rawXml: new XMLSerializer().serializeToString(pageNode),
+                processedBody: parseCaliTokens(rawBodyText),
+                interactive: isInteractive,
+                questionType: isInteractive ? interactionNode.getAttribute("TYPE") : null
+            });
+        }
     }
 
-    // Set Initial Application Rendering Node View
     lessonState.currentIndex = 0;
     renderCurrentPage();
 }
 
-/**
- * Interface Layout Renderer Update Worker
- */
 function renderCurrentPage() {
     if (lessonState.pages.length === 0) return;
 
     const page = lessonState.pages[lessonState.currentIndex];
 
-    // 1. Update Layout Canvas DOM
     let htmlOutput = `<h2>${page.name}</h2>`;
     htmlOutput += `<div class="content-body">${page.processedBody}</div>`;
 
-    // Add visual flag structure if parser tracked dynamic interaction tags
     if (page.interactive) {
         htmlOutput += `
             <div class="interactive-question-box">
-                <strong>💡 Interactive Interaction Interface [Type: ${page.questionType || 'Standard'}]</strong>
-                <p>Advanced evaluation node structure successfully mapped by parser engine.</p>
+                <strong>💡 Interactive Element [Type: ${page.questionType || 'Standard'}]</strong>
+                <p>This page contains live interaction tracking properties.</p>
             </div>`;
     }
     
     document.getElementById("render-target").innerHTML = htmlOutput;
-
-    // 2. Mirror Out the Cleanly Parsed Code Node Target Panel
     document.getElementById("xml-inspector").textContent = page.rawXml;
 
-    // 3. Update Status Indicators & Buttons State Flags
-    document.getElementById("lesson-title").textContent = `Active Lesson Workspace [Node: ${page.name}]`;
     document.getElementById("page-counter").textContent = `Page ${lessonState.currentIndex + 1} of ${lessonState.pages.length}`;
     document.getElementById("btn-prev").disabled = (lessonState.currentIndex === 0);
     document.getElementById("btn-next").disabled = (lessonState.currentIndex === lessonState.pages.length - 1);
 }
 
-/**
- * Simple In-Memory State Switch Navigation Handler
- */
 function navigatePage(direction) {
     const targetIndex = lessonState.currentIndex + direction;
     if (targetIndex >= 0 && targetIndex < lessonState.pages.length) {
@@ -253,33 +248,20 @@ function navigatePage(direction) {
     }
 }
 
-// Global Lifecycle Bootstrapper Injection Mock Hook 
-// (Receives string data pipeline fed directly by your PHP cURL backend execution framework)
+// Safely bridge the real PHP XML payload string directly into the JS execution loop
 window.addEventListener("DOMContentLoaded", () => {
-    // Escaped placeholder representing the raw XML passed from your PHP processing variable
-    const phpDataPayload = `<?xml version="1.0" encoding="UTF-8"?>
-    <LESSON>
-        <PAGE NAME="Introduction to Torts">
-            <BODY>/PWelcome to the lesson. /CRThis text features a legacy break. /BThis is bolded content.</BODY>
-        </PAGE>
-        <PAGE NAME="Concept Comprehension Check">
-            <BODY>/PReview the facts below and formulate an evaluation answer matrix.</BODY>
-            <INTERACTION TYPE="MULTIPLE_CHOICE" />
-        </PAGE>
-    </LESSON>`;
-
-    processLessonXml(phpDataPayload);
+    const realXmlPayload = `<?php echo json_encode($xmlPayload); ?>`;
+    // Clean outer JSON quotes added by json_encode helper safely
+    const cleanXml = JSON.parse(realXmlPayload);
+    processLessonXml(cleanXml);
 });
 </script>
 </body>
 </html>
-    <?php
-    exit;
-}
-
 // -------------------------------------------------------------------------
 // ROUTE 2: Main Directory Listing Mode (Default View)
 // -------------------------------------------------------------------------
+
 $params = [
     'filter' => [
         'field_lesson_type' => 'CALI Author'
