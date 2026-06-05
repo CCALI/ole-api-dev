@@ -282,9 +282,8 @@ function renderCurrentPage() {
                     document.querySelector('.html-renderer-panel').scrollTop = 0;
                 }
             </script>
-        <?php endif; ?>
-    </body>
-    </html>
+        </body>
+        </html>
     <?php
     exit;
 }
